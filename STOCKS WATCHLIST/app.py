@@ -5,9 +5,9 @@ import time
 from datetime import datetime, timedelta
 
 # --- 🟢 PAGE CONFIG ---
-st.set_page_config(page_title="AI Trading Advisor V3", page_icon="📈", layout="wide")
+st.set_page_config(page_title="AI Trading Advisor V3.1", page_icon="📈", layout="wide")
 
-st.title("🌟 AI Trading Advisor V3.0")
+st.title("🌟 AI Trading Advisor V3.1")
 st.write(f"**Live Market Intelligence** | {datetime.now().strftime('%B %d, %Y')}")
 
 # --- 🟢 SETUP ---
@@ -28,51 +28,55 @@ WATCHLIST = [
 
 def get_market_signal(ticker):
     try:
-        # 1. Get News from Finnhub
+        # 1. News Fetching (Finnhub)
         to_date = datetime.now().strftime('%Y-%m-%d')
-        from_date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+        from_date = (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')
         news_url = f"https://finnhub.io/api/v1/company-news?symbol={ticker}&from={from_date}&to={to_date}&token={API_KEY}"
-        news_data = requests.get(news_url).json()
-
+        
+        response = requests.get(news_url)
+        
+        # If we hit the API limit (Status 429), we tell the app to wait
+        if response.status_code == 429:
+            return "API Speed Limit Reached", "🕒 WAIT", 0, "Rate limited. Slowing down..."
+            
+        news_data = response.json()
         if not news_data:
-            return "No recent news found.", "🟡 HOLD", 0, "No data available."
+            return "No recent news found.", "🟡 HOLD", 0, "No headlines to analyze."
 
         headline = news_data[0].get('headline', "No Headline")
         
-        # 2. Get Price Data
+        # 2. Price Fetching (yfinance)
         stock = yf.Ticker(ticker)
-        hist = stock.history(period="1d", interval="1m")
+        hist = stock.history(period="1d")
         
-        if hist.empty:
-            price_change = 0.0
-        else:
+        price_change = 0.0
+        if not hist.empty:
             price_change = ((hist['Close'].iloc[-1] - hist['Open'].iloc[0]) / hist['Open'].iloc[0]) * 100
 
-        # 3. AI Sentiment Logic (The "Explainer")
+        # 3. AI Sentiment Logic
         score = 0
-        pos_words = ["growth", "buy", "target", "soar", "deal", "ai", "beats", "record", "bullish"]
-        neg_words = ["war", "plunge", "hit", "drop", "fire", "attack", "outage", "misses", "bearish"]
+        pos_words = ["growth", "buy", "target", "soar", "deal", "ai", "beats", "record", "bullish", "upgrade"]
+        neg_words = ["war", "plunge", "hit", "drop", "fire", "attack", "outage", "misses", "bearish", "downgrade"]
         
-        found_pos = [w for w in pos_words if w in headline.lower()]
-        found_neg = [w for w in neg_words if w in headline.lower()]
+        title_low = headline.lower()
+        found_pos = [w for w in pos_words if w in title_low]
+        found_neg = [w for w in neg_words if w in title_low]
         
         score = len(found_pos) - len(found_neg)
-        
-        # Build the explanation string
-        explanation = f"Logic: +{len(found_pos)} pos, -{len(found_neg)} neg. Price: {price_change:.2f}%"
+        logic_msg = f"Score: {score} | Change: {price_change:.2f}%"
 
         # 4. Final Decision
-        if score >= 1 and price_change > 0.2:
+        if score >= 1 and price_change >= 0:
             advice = "🟢 RECOMMEND: BUY"
-        elif score <= -1 or price_change < -1.0:
+        elif score <= -1 or price_change < -1.5:
             advice = "🔴 RECOMMEND: SELL"
         else:
             advice = "🟡 RECOMMEND: HOLD"
 
-        return headline, advice, score, explanation
+        return headline, advice, score, logic_msg
 
     except Exception as e:
-        return f"Error: {e}", "❌ ERROR", 0, "System failure."
+        return f"Connection issue: {ticker}", "⚪️ ERROR", 0, f"Error: {str(e)[:20]}"
 
 # --- 🚀 THE APP INTERFACE ---
 if st.button('🔍 Start Real-Time Scan'):
@@ -82,6 +86,7 @@ if st.button('🔍 Start Real-Time Scan'):
     alert_container = st.container()
 
     for i, ticker in enumerate(WATCHLIST):
+        # Update progress bar
         percent_complete = (i + 1) / len(WATCHLIST)
         progress_bar.progress(percent_complete)
         status_text.text(f"Analyzing {ticker} ({i+1}/{len(WATCHLIST)})...")
@@ -89,16 +94,17 @@ if st.button('🔍 Start Real-Time Scan'):
         headline, advice, score, logic = get_market_signal(ticker)
 
         with alert_container:
+            # We use Expanders to keep the 100 stocks organized
             with st.expander(f"**{ticker}** - {advice}"):
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.write(f"📰 **Latest:** {headline}")
-                with col2:
+                c1, c2 = st.columns([3, 1])
+                with c1:
+                    st.write(f"📰 **Headline:** {headline}")
+                    st.caption(f"⚙️ {logic}")
+                with c2:
                     st.metric("AI Score", score)
-                
-                st.caption(f"⚙️ {logic}")
         
-        time.sleep(0.5) # Faster but safe
+        # This timer is key! 1.5s keeps us under the 60 requests/minute limit.
+        time.sleep(1.5) 
 
     st.balloons()
     st.success("Full Scan Complete!")
