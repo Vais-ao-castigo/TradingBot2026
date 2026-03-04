@@ -5,6 +5,16 @@ import time
 import pandas as pd
 from datetime import datetime, timedelta
 
+# --- 🟢 GHOST MODE (Hides GitHub Icon & Streamlit Branding) ---
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
 # --- 🟢 PAGE CONFIG ---
 st.set_page_config(page_title="AI Trading Advisor V3.3", page_icon="📈", layout="wide")
 
@@ -143,3 +153,4 @@ if st.button('🚀 Start Full Market Analysis'):
     st.success(f"✅ Scan Complete! Top Pick: **{top_ticker}** with a score of **{top_score}**.")
 else:
     st.info("Ready for analysis. Click the button above to start the 100-stock scan.")
+
