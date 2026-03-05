@@ -5,42 +5,63 @@ import time
 import pandas as pd
 from datetime import datetime, timedelta
 
-# --- 🟢 GHOST MODE (Hides GitHub Icon & Streamlit Branding) ---
+# --- 🟢 1. PAGE CONFIG & GHOST MODE ---
+# This makes it look like a professional standalone website
+st.set_page_config(page_title="AI Trading Advisor V3.6", page_icon="📈", layout="wide")
+
 hide_st_style = """
             <style>
             #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
             header {visibility: hidden;}
+            .stAppDeployButton {display:none;}
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
-# --- 🟢 PAGE CONFIG ---
-st.set_page_config(page_title="AI Trading Advisor V3.3", page_icon="📈", layout="wide")
+# --- 🟢 2. SIDEBAR TOOLS ---
+with st.sidebar:
+    st.header("🚀 Quick Tools")
+    
+    # SHARE SECTION
+    st.subheader("📢 Share with Friends")
+    # Change the link below to your actual URL once you set your custom one!
+    my_url = "https://ai-stock-advisor.streamlit.app" 
+    st.text_input("Copy Link:", my_url)
+    st.caption("Share this link with other traders!")
 
-# --- 🟢 HEADER & DISCLAIMER ---
-st.title("🌟 AI Trading Advisor V3.3")
+    st.divider()
 
+    # REQUEST A STOCK (This goes to your private logs)
+    st.subheader("📩 Suggest a Stock")
+    user_request = st.text_input("What should I scan next?", placeholder="e.g., PLTR or BTC-USD")
+    if user_request:
+        st.success(f"Noted! I'll look into {user_request}.")
+        print(f"🔥 USER REQUESTED: {user_request}") 
+
+    st.divider()
+
+    # AI SCALE LEGEND
+    st.subheader("⚖️ AI Score Legend")
+    st.code("+3 or more: Strong Buy\n 0: Neutral / Hold\n-3 or less: Strong Sell")
+    st.info("Score = (Good News) - (Bad News)")
+
+    st.divider()
+    
+    # MARKET LEADER SPOTLIGHT
+    st.subheader("🏆 Top Pick Today")
+    spotlight = st.empty()
+    spotlight.info("Run scan to see leader.")
+
+# --- 🟢 3. HEADER & DISCLAIMER ---
+st.title("🌟 AI Trading Advisor V3.6")
 st.warning("""
 **⚠️ USE AT YOUR OWN RISK:** This AI is for educational purposes only. AI is **not 100% accurate**. 
 Always consult a human financial advisor before trading.
 """)
-
 st.write(f"**Live Market Intelligence** | {datetime.now().strftime('%B %d, %Y')}")
 
-# --- 🟢 THE SCALE (Sidebar) ---
-with st.sidebar:
-    st.header("📊 Sentiment Scale")
-    st.code("""
- +3 or more: Strong Buy
- +1 to +2:   Speculative Buy
-  0:         Neutral / Hold
- -1 to -2:   Caution / Sell
- -3 or less: Strong Sell
-    """)
-    st.info("The AI scans headlines for 'Trigger Words' and combines them with price action.")
-
-# --- 🟢 SETUP ---
+# --- 🟢 4. THE WATCHLIST (Your 100 Stocks) ---
 API_KEY = "d6jgtchr01qkvh5prf7gd6jgtchr01qkvh5prf80" 
 WATCHLIST = [
     "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AVGO", "LLY", "JPM",
@@ -62,22 +83,17 @@ def get_market_signal(ticker):
         news_url = f"https://finnhub.io/api/v1/company-news?symbol={ticker}&from={from_date}&to={to_date}&token={API_KEY}"
         news_data = requests.get(news_url).json()
         
-        if not news_data:
-            return "No news found.", "🟡 HOLD", 0
-
-        headline = news_data[0].get('headline', "No Headline")
+        headline = news_data[0].get('headline', "No Recent News") if news_data else "No Recent News"
         stock = yf.Ticker(ticker)
         hist = stock.history(period="1d")
-        price_change = 0.0
-        if not hist.empty:
-            price_change = ((hist['Close'].iloc[-1] - hist['Open'].iloc[0]) / hist['Open'].iloc[0]) * 100
+        price_change = ((hist['Close'].iloc[-1] - hist['Open'].iloc[0]) / hist['Open'].iloc[0]) * 100 if not hist.empty else 0
         
-        bad_words = ["war", "plunge", "hit", "drop", "fire", "attack", "outage", "miss", "risk", "lawsuit", "slump", "down", "bearish"]
-        good_words = ["growth", "buy", "target", "soar", "deal", "ai", "beat", "surge", "win", "partnership", "record", "up", "bullish"]
+        good_words = ["growth", "buy", "target", "soar", "deal", "ai", "beat", "surge", "win", "partnership", "record", "up"]
+        bad_words = ["war", "plunge", "hit", "drop", "fire", "attack", "outage", "miss", "risk", "lawsuit", "slump", "down"]
         
-        headline_low = headline.lower()
-        pos_count = sum(1 for word in good_words if word in headline_low)
-        neg_count = sum(1 for word in bad_words if word in headline_low)
+        low_h = headline.lower()
+        pos_count = sum(1 for word in good_words if word in low_h)
+        neg_count = sum(1 for word in bad_words if word in low_h)
         score = pos_count - neg_count
 
         if score >= 1 and price_change > 0:
@@ -88,69 +104,57 @@ def get_market_signal(ticker):
             advice = "HOLD"
             
         return headline, advice, score
+    except:
+        return "N/A", "HOLD", 0
 
-    except Exception as e:
-        return f"Error: {e}", "ERROR", 0
-
-# --- 🚀 THE APP INTERFACE ---
+# --- 🚀 5. THE MAIN INTERFACE ---
 if st.button('🚀 Start Full Market Analysis'):
     st.write("---")
     
-    # Summary Dashboard Setup
+    # Metrics columns
     m1, m2, m3 = st.columns(3)
-    buy_metric = m1.metric("🟢 BUY SIGNALS", "0")
-    hold_metric = m2.metric("🟡 HOLD SIGNALS", "0")
-    sell_metric = m3.metric("🔴 SELL SIGNALS", "0")
+    buy_m, hold_m, sell_m = m1.metric("🟢 BUYS", "0"), m2.metric("🟡 HOLDS", "0"), m3.metric("🔴 SELLS", "0")
 
-    progress_bar = st.progress(0)
+    progress = st.progress(0)
     status_text = st.empty()
-    
-    # Containers for results
-    chart_container = st.empty()
     alert_container = st.container()
 
-    # Data tracking
-    summary_data = {"BUY": 0, "HOLD": 0, "SELL": 0}
-    top_score = -99
-    top_ticker = ""
+    summary = {"BUY": 0, "HOLD": 0, "SELL": 0}
+    best_score = -99
+    best_ticker = ""
 
     for i, ticker in enumerate(WATCHLIST):
-        percent_complete = (i + 1) / len(WATCHLIST)
-        progress_bar.progress(percent_complete)
-        status_text.text(f"Scanning: {ticker} ({i+1}/{len(WATCHLIST)})")
+        progress.progress((i + 1) / len(WATCHLIST))
+        status_text.text(f"Analyzing {ticker}...")
         
-        headline, advice, score = get_market_signal(ticker)
+        head, adv, scr = get_market_signal(ticker)
         
-        # Update Counts
-        if advice in summary_data:
-            summary_data[advice] += 1
-        
-        # Track Top Pick
-        if score > top_score:
-            top_score = score
-            top_ticker = ticker
+        summary[adv] += 1
+        if scr > best_score:
+            best_score = scr
+            best_ticker = ticker
+            # Update Spotlight in Sidebar Live
+            spotlight.success(f"🌟 **{best_ticker}** (Score: {best_score})")
 
-        # Update Live Metrics
-        buy_metric.metric("🟢 BUY SIGNALS", summary_data["BUY"])
-        hold_metric.metric("🟡 HOLD SIGNALS", summary_data["HOLD"])
-        sell_metric.metric("🔴 SELL SIGNALS", summary_data["SELL"])
+        buy_m.metric("🟢 BUYS", summary["BUY"])
+        hold_m.metric("🟡 HOLDS", summary["HOLD"])
+        sell_m.metric("🔴 SELLS", summary["SELL"])
 
         with alert_container:
-            color = "green" if advice == "BUY" else "red" if advice == "SELL" else "orange"
-            with st.expander(f"**{ticker}** | :{color}[{advice}] (Score: {score})"):
-                st.write(f"📰 **Latest News:** {headline}")
-                st.link_button(f"Analyze {ticker} on Yahoo Finance", f"https://finance.yahoo.com/quote/{ticker}")
+            color = "green" if adv == "BUY" else "red" if adv == "SELL" else "orange"
+            with st.expander(f"**{ticker}** | :{color}[{adv}] (Score: {scr})"):
+                st.write(f"📰 {head}")
+                st.link_button(f"View {ticker} Chart", f"https://finance.yahoo.com/quote/{ticker}")
 
-        time.sleep(1.5) 
+        time.sleep(1.2) # API Protection
 
-    # Final Summary Visuals
+    # Summary Chart
     st.divider()
     st.header("📊 Market Sentiment Summary")
-    df_chart = pd.DataFrame(list(summary_data.items()), columns=['Signal', 'Count'])
+    df_chart = pd.DataFrame(list(summary.items()), columns=['Signal', 'Count'])
     st.bar_chart(df_chart.set_index('Signal'))
     
     st.balloons()
-    st.success(f"✅ Scan Complete! Top Pick: **{top_ticker}** with a score of **{top_score}**.")
+    st.success(f"✅ Scan Complete! Top Pick: **{best_ticker}**")
 else:
-    st.info("Ready for analysis. Click the button above to start the 100-stock scan.")
-
+    st.info("Ready for analysis. Click the button to start.")
