@@ -167,34 +167,3 @@ if st.button('🚀 Start Full Market Analysis'):
     st.success(f"✅ Scan Complete! Top Pick: **{best_ticker}**")
 else:
     st.info("Ready for analysis. Click the button to start.")
-
-# --- 🟢 6. AI CHATBOT INTERFACE ---
-st.divider()
-st.header("🤖 Ask the Stock Assistant")
-
-# Initialize chat history (This keeps the conversation going)
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# Display chat messages from history on app rerun
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# React to user input
-if prompt := st.chat_input("Ask me about a stock..."):
-    # Display user message in chat message container
-    with st.chat_message("user"):
-        st.markdown(prompt)
-    # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
-
-    # BOT LOGIC: For now, we'll make it a "Smart Keyword" bot
-    response = f"I see you're asking about '{prompt}'. I'm currently scanning the market for news. Try running the 'Full Market Analysis' button above to see my latest signals!"
-    
-    # Display assistant response in chat message container
-    with st.chat_message("assistant"):
-        st.markdown(response)
-    # Add assistant response to chat history
-    st.session_state.messages.append({"role": "assistant", "content": response})
-
