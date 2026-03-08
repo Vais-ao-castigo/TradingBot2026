@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 # --- 🟢 1. PAGE CONFIG & GHOST MODE ---
 # This makes it look like a professional standalone website
-st.set_page_config(page_title="AI Trading Advisor V3.6", page_icon="📈", layout="wide")
+st.set_page_config(page_title="AI Trading Advisor V3.7", page_icon="📈", layout="wide")
 
 hide_st_style = """
             <style>
@@ -53,8 +53,17 @@ with st.sidebar:
     spotlight = st.empty()
     spotlight.info("Run scan to see leader.")
 
-# --- 🟢 3. HEADER & DISCLAIMER ---
-st.title("🌟 AI Trading Advisor V3.6")
+# --- 🟢 3. HEADER & SEO SECTION (Updated!) ---
+st.title("🌟 AI Trading Advisor: Free Stock Sentiment Scanner")
+
+# This paragraph is "SEO Gold" - it tells Google exactly what you do.
+st.write("""
+### The best AI-powered tool for real-time stock market news analysis.
+Our **AI Trading Advisor** scans the top 100 stocks (including NVIDIA, Tesla, and Apple) 
+using advanced sentiment analysis to find **Buy and Sell signals** based on live 
+market intelligence. Perfect for NASDAQ and NYSE traders looking for an edge in 2026.
+""")
+
 st.warning("""
 **⚠️ USE AT YOUR OWN RISK:** This AI is for educational purposes only. AI is **not 100% accurate**. 
 Always consult a human financial advisor before trading.
